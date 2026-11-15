@@ -1,0 +1,28 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import { ArrowRight, Eye, FileVideo, Globe2, History, Link2, LoaderCircle, Plus, Search, Trash2 } from "lucide-react";
+import { VerdictBadge } from "@/components/analysis-result";
+import { kindLabels, type CheckKind, type SavedAnalysis, type Verdict } from "@/lib/types";
+
+export function HistoryList({ analyses, onOpen, onDelete }: { analyses: SavedAnalysis[]; onOpen: (analysis: SavedAnalysis) => void; onDelete: (analysis: SavedAnalysis) => void }) {
+  return <div className="history-table"><div className="history-table-head"><span>CONTEÚDO VERIFICADO</span><span>TIPO</span><span>RESULTADO</span><span>DATA</span><span className="sr-only">Ações</span></div>{analyses.map((analysis) => {
+    const Icon = analysis.kind === "video" ? FileVideo : analysis.kind === "site" ? Globe2 : Link2;
+    return <div className="history-row" key={analysis.id}><button className="history-content" onClick={() => onOpen(analysis)}><span className="history-type-icon"><Icon size={19}/></span><span><strong>{analysis.title}</strong><small>{analysis.source}</small></span></button><span className="history-kind">{kindLabels[analysis.kind]}</span><VerdictBadge verdict={analysis.verdict}/><time dateTime={analysis.createdAt}>{new Date(analysis.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}<small>{new Date(analysis.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</small></time><div className="history-actions"><button className="icon-button" onClick={() => onOpen(analysis)} aria-label={`Ver análise de ${analysis.title}`} title="Ver análise"><Eye size={16}/></button><button className="icon-button delete-button" onClick={() => onDelete(analysis)} aria-label={`Excluir análise de ${analysis.title}`} title="Excluir análise"><Trash2 size={15}/></button></div></div>;
+  })}</div>;
+}
+
+export function HistoryView({ analyses, total, loading, error, onRetry, onOpen, onDelete, onClear }: { analyses: SavedAnalysis[]; total: number; loading: boolean; error: string; onRetry: () => void; onOpen: (analysis: SavedAnalysis) => void; onDelete: (analysis: SavedAnalysis) => void; onClear: () => void }) {
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<CheckKind | "all">("all");
+  const [verdict, setVerdict] = useState<Verdict | "all">("all");
+  const filtered = analyses.filter((analysis) => (kind === "all" || analysis.kind === kind) && (verdict === "all" || analysis.verdict === verdict) && `${analysis.title} ${analysis.source}`.toLowerCase().includes(query.toLowerCase()));
+  const hasFilters = query !== "" || kind !== "all" || verdict !== "all";
+  return <div className="page-enter"><div className="page-heading"><div><span className="eyebrow"><History size={14}/>CADA CHECAGEM CONTA</span><h1>Seu histórico de análises.</h1><p>Um lugar para revisitar o que você já olhou com mais atenção.</p></div><Link href="/" className="primary-button"><Plus size={17}/>Nova análise</Link></div>
+    <section className="history-panel"><div className="history-panel-heading"><h2>Suas verificações <span className="count-pill">{total}</span></h2><button className="text-button muted" disabled={!analyses.length || loading} onClick={onClear}><Trash2 size={14}/>Limpar histórico</button></div>
+      <div className="history-controls"><div className="search-field"><Search size={17}/><input aria-label="Buscar no histórico" placeholder="Buscar por título ou endereço…" value={query} onChange={(event) => setQuery(event.target.value)}/></div><select aria-label="Filtrar por tipo" value={kind} onChange={(event) => setKind(event.target.value as CheckKind | "all")}><option value="all">Todos os tipos</option><option value="link">Links</option><option value="site">Sites</option><option value="video">Vídeos</option></select><select aria-label="Filtrar por resultado" value={verdict} onChange={(event) => setVerdict(event.target.value as Verdict | "all")}><option value="all">Todos os resultados</option><option value="low-risk">Sem alertas técnicos</option><option value="attention">Sinais de atenção</option><option value="inconclusive">Inconclusivas</option></select></div>
+      {loading ? <div className="empty-state"><LoaderCircle className="spinning" size={26}/><p>Buscando suas análises…</p></div> : error ? <div className="empty-state"><History size={28}/><h3>Não conseguimos carregar o histórico.</h3><p>{error}</p><button className="secondary-button" onClick={onRetry}>Tentar novamente</button></div> : filtered.length ? <><HistoryList analyses={filtered} onOpen={onOpen} onDelete={onDelete}/><div className="history-table-footer">{filtered.length} {filtered.length === 1 ? "análise" : "análises"}{total > 100 ? " · exibindo as 100 verificações mais recentes" : ""}<span><History size={12}/>Só você, neste navegador</span></div></> : <div className="empty-state"><span className="empty-icon"><History size={30}/></span><h3>{hasFilters ? "Nenhuma análise por aqui." : "Toda checagem é um começo."}</h3><p>{hasFilters ? "Tente outro termo ou remova os filtros para encontrar o que procura." : "Suas verificações vão aparecer aqui. Que tal começar com aquele link que deixou uma dúvida?"}</p>{hasFilters ? <button className="secondary-button" onClick={() => { setQuery(""); setKind("all"); setVerdict("all"); }}>Limpar filtros</button> : <Link className="primary-button" href="/">Fazer minha primeira análise<ArrowRight size={16}/></Link>}</div>}
+    </section><p className="history-privacy">Seu histórico é privado e está vinculado a este navegador. Você pode excluir as análises quando quiser.</p>
+  </div>;
+}
